@@ -25,9 +25,17 @@ const db = getDatabase(app);
 // ============================
 const loginModal = document.getElementById('login-modal');
 const loginForm = document.getElementById('login-form');
+const signinLink = document.getElementById('signin-link');
 
-// Show login modal when page loads
+// Show login modal when page loads or when sign in button is clicked
 document.addEventListener('DOMContentLoaded', () => {
+  loginModal.style.display = 'flex';
+  updateHeaderAuthState();
+});
+
+// Handle sign in button click
+signinLink.addEventListener('click', (e) => {
+  e.preventDefault();
   loginModal.style.display = 'flex';
 });
 
@@ -57,6 +65,9 @@ loginForm.addEventListener('submit', async (e) => {
       // Hide login modal
       loginModal.style.display = 'none';
       
+      // Update header
+      updateHeaderAuthState();
+      
       // Show success message
       showVoteMessage('Login successful! You can now vote.');
     } else {
@@ -69,6 +80,9 @@ loginForm.addEventListener('submit', async (e) => {
       
       // Hide login modal
       loginModal.style.display = 'none';
+      
+      // Update header
+      updateHeaderAuthState();
       
       // Show success message
       showVoteMessage('Account created and login successful! You can now vote.');
@@ -106,6 +120,56 @@ async function createNewUser(email, password) {
     createdAt: timestamp,
     lastLogin: timestamp
   });
+}
+
+// Update header based on authentication state
+function updateHeaderAuthState() {
+  const navLinks = document.querySelector('.nav-links');
+  const signinLink = document.getElementById('signin-link');
+  
+  if (isUserLoggedIn()) {
+    const userEmail = localStorage.getItem('userEmail');
+    
+    // Replace Sign In button with user info
+    signinLink.style.display = 'none';
+    
+    // Create user info section
+    let userInfo = document.querySelector('.user-info');
+    if (!userInfo) {
+      userInfo = document.createElement('div');
+      userInfo.className = 'user-info';
+      
+      const userEmailSpan = document.createElement('span');
+      userEmailSpan.className = 'user-email';
+      userEmailSpan.textContent = userEmail;
+      
+      const logoutBtn = document.createElement('button');
+      logoutBtn.className = 'logout-btn';
+      logoutBtn.textContent = 'Logout';
+      logoutBtn.addEventListener('click', handleLogout);
+      
+      userInfo.appendChild(userEmailSpan);
+      userInfo.appendChild(logoutBtn);
+      navLinks.appendChild(userInfo);
+    }
+  } else {
+    // Show Sign In button
+    signinLink.style.display = 'block';
+    
+    // Remove user info if exists
+    const userInfo = document.querySelector('.user-info');
+    if (userInfo) {
+      userInfo.remove();
+    }
+  }
+}
+
+// Handle logout
+function handleLogout() {
+  localStorage.removeItem('userLoggedIn');
+  localStorage.removeItem('userEmail');
+  updateHeaderAuthState();
+  showVoteMessage('You have been logged out.');
 }
 
 // Check if user is logged in
@@ -275,6 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Check if user is already logged in
   if (isUserLoggedIn()) {
     loginModal.style.display = 'none';
+    updateHeaderAuthState();
   }
 });
 
