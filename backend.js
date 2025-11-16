@@ -46,19 +46,33 @@ loginForm.addEventListener('submit', async (e) => {
   try {
     showLoading(true);
     
-    // In a real implementation, you would use Firebase Auth here
-    // For demo purposes, we'll simulate a successful login
-    await simulateLogin(email, password);
+    // Check if user exists and password matches
+    const userExists = await checkUserCredentials(email, password);
     
-    // Store login status
-    localStorage.setItem('userLoggedIn', 'true');
-    localStorage.setItem('userEmail', email);
-    
-    // Hide login modal
-    loginModal.style.display = 'none';
-    
-    // Show success message
-    showVoteMessage('Login successful! You can now vote.');
+    if (userExists) {
+      // Store login status
+      localStorage.setItem('userLoggedIn', 'true');
+      localStorage.setItem('userEmail', email);
+      
+      // Hide login modal
+      loginModal.style.display = 'none';
+      
+      // Show success message
+      showVoteMessage('Login successful! You can now vote.');
+    } else {
+      // If user doesn't exist, create new account automatically
+      await createNewUser(email, password);
+      
+      // Store login status
+      localStorage.setItem('userLoggedIn', 'true');
+      localStorage.setItem('userEmail', email);
+      
+      // Hide login modal
+      loginModal.style.display = 'none';
+      
+      // Show success message
+      showVoteMessage('Account created and login successful! You can now vote.');
+    }
     
   } catch (error) {
     alert('Login failed: ' + error.message);
@@ -67,17 +81,30 @@ loginForm.addEventListener('submit', async (e) => {
   }
 });
 
-// Simulate login (replace with actual Firebase Auth)
-function simulateLogin(email, password) {
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      // Simple validation for demo
-      if (email.includes('@') && password.length >= 6) {
-        resolve({ email: email });
-      } else {
-        reject(new Error('Invalid email or password'));
-      }
-    }, 1000);
+// Check user credentials in Firebase
+async function checkUserCredentials(email, password) {
+  const userRef = ref(db, `users/${email.replace('.', '_')}`);
+  const snapshot = await get(userRef);
+  
+  if (snapshot.exists()) {
+    const userData = snapshot.val();
+    // In a real app, you should hash passwords - this is for demo purposes
+    return userData.password === password;
+  }
+  
+  return false;
+}
+
+// Create new user in Firebase
+async function createNewUser(email, password) {
+  const userRef = ref(db, `users/${email.replace('.', '_')}`);
+  const timestamp = new Date().toISOString();
+  
+  await set(userRef, {
+    email: email,
+    password: password, // In production, this should be hashed
+    createdAt: timestamp,
+    lastLogin: timestamp
   });
 }
 
@@ -151,6 +178,10 @@ async function sendUserVoteData(pollId, choice) {
     timestamp: timestamp,
     email: userEmail
   });
+  
+  // Update user's last activity
+  const userRef = ref(db, `users/${userEmail.replace('.', '_')}/lastActivity`);
+  await update(userRef, timestamp);
 }
 
 // Show results
